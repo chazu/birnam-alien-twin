@@ -60,9 +60,20 @@ when finished. The wrapper exposes:
 - connection metadata: `twinConnectionFd`, `twinLibraryVersion`,
   `twinServerVersion`, `twinDisplayWidth`, and `twinDisplayHeight`;
 - connection state: `twinFlush`, `twinSync`, `twinInPanic`, and `twinClose`;
-- windows: `twinCreateWindow:width:height:`, `twinWriteUtf8:text:`,
-  `twinSetTitle:title:`, `twinGoto:x:y:`, `twinResize:width:height:`, and
-  `twinDeleteWindow:`.
+- creation: `twinCreateWindow:width:height:` plus the configurable
+  `twinCreateWindow:width:height:cursor:attributes:flags:`;
+- content: `twinWriteUtf8:text:`, `twinGoto:x:y:`,
+  `twinSetTextColor:foreground:background:`, and
+  `twinFillRect:x:y:width:height:codepoint:foreground:background:`;
+- geometry/stacking: `twinMove:x:y:`, `twinResize:width:height:`,
+  `twinScroll:dx:dy:`, `twinSetVisible:visible:`, `twinFocus:`, `twinRaise:`,
+  and `twinLower:`;
+- metadata/lifetime: `twinSetTitle:title:` and `twinDeleteWindow:`.
+
+Colors cross the bridge as portable 24-bit `0xRRGGBB` integers; the C side
+constructs Twin's ABI-dependent `trgb`, `tcolor`, and `tcell` values. Rectangle
+fill similarly accepts a Unicode codepoint and never exposes a native cell
+array to Birnam.
 
 All window functions answer `1` on success or `0` on failure. Creation answers
 the unsigned Twin object id, with `0` indicating failure. `[Twin lastError]`
@@ -85,7 +96,9 @@ receive `twinEventFree` exactly once. Available fields are `twinEventType`,
 `twinEventWidget`, `twinEventCode`, `twinEventShiftFlags`, `twinEventX`,
 `twinEventY`, `twinEventWidth`, `twinEventHeight`, and `twinEventText`. The
 `Twin eventDisplay`, `eventKey`, `eventMouse`, `eventChange`, `eventGadget`,
-`eventMenuRow`, and `eventControl` messages answer common event-type constants.
+`eventMenuRow`, selection variants, `eventControl`, `eventControlReply`, and
+`eventClientMessage` messages answer common event-type constants. `changeResize`
+and `changeExpose` name the standard widget-change codes.
 
 ## Boundary and scope
 
@@ -93,10 +106,12 @@ Twin's public API contains custom-width integers, packed event unions,
 version-dependent color/cell representations, variadic dispatch, and callback
 listeners. The C bridge
 keeps those ABI details out of Alien and presents only `int`, `unsigned long`,
-C strings, and opaque pointers. This initial wrapper covers the connection,
-basic window, UTF-8 output, and copied-event paths. Menus, gadgets, selections,
-listener callbacks, and raw drawing cells remain available in the vendored C
-API but are not yet exposed to Birnam.
+C strings, and opaque pointers. The wrapper covers connection, configurable
+window, UTF-8 output, rectangular cell drawing, geometry/stacking, and
+copied-event paths. Menus, gadgets, selection ownership/data transfer,
+inter-client messages, and listener callbacks remain available in the vendored
+C API but are not exposed until a managed consumer needs those server-side
+facilities.
 
 ## Vendored source and licensing
 

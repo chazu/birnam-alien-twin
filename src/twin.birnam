@@ -30,6 +30,8 @@
 // widths normalized by native/alien_twin.c.
 [Alien wrap: "alien_twin_create_window" signature: "u p s i i"
   as: #twinCreateWindow:width:height: on: ForeignAddress];
+[Alien wrap: "alien_twin_create_window_configured" signature: "u p s i i u u u"
+  as: #twinCreateWindow:width:height:cursor:attributes:flags: on: ForeignAddress];
 [Alien wrap: "alien_twin_delete_window" signature: "i p u"
   as: #twinDeleteWindow: on: ForeignAddress];
 [Alien wrap: "alien_twin_write_utf8" signature: "i p u s"
@@ -40,6 +42,22 @@
   as: #twinGoto:x:y: on: ForeignAddress];
 [Alien wrap: "alien_twin_resize" signature: "i p u i i"
   as: #twinResize:width:height: on: ForeignAddress];
+[Alien wrap: "alien_twin_move" signature: "i p u i i"
+  as: #twinMove:x:y: on: ForeignAddress];
+[Alien wrap: "alien_twin_scroll" signature: "i p u i i"
+  as: #twinScroll:dx:dy: on: ForeignAddress];
+[Alien wrap: "alien_twin_set_visible" signature: "i p u i"
+  as: #twinSetVisible:visible: on: ForeignAddress];
+[Alien wrap: "alien_twin_focus" signature: "i p u"
+  as: #twinFocus: on: ForeignAddress];
+[Alien wrap: "alien_twin_raise" signature: "i p u"
+  as: #twinRaise: on: ForeignAddress];
+[Alien wrap: "alien_twin_lower" signature: "i p u"
+  as: #twinLower: on: ForeignAddress];
+[Alien wrap: "alien_twin_set_text_color" signature: "i p u u u"
+  as: #twinSetTextColor:foreground:background: on: ForeignAddress];
+[Alien wrap: "alien_twin_fill_rect" signature: "i p u i i i i u u u"
+  as: #twinFillRect:x:y:width:height:codepoint:foreground:background: on: ForeignAddress];
 
 // Event reads return an owned bridge event. A null address means no event was
 // available in non-blocking mode. Call twinEventFree exactly once on each
@@ -65,6 +83,15 @@
 [Reflect defineMethod: #eventGadget on: Twin as: [:self | 4099]];
 [Reflect defineMethod: #eventMenuRow on: Twin as: [:self | 4100]];
 [Reflect defineMethod: #eventControl on: Twin as: [:self | 8192]];
+[Reflect defineMethod: #eventSelection on: Twin as: [:self | 4101]];
+[Reflect defineMethod: #eventSelectionNotify on: Twin as: [:self | 4102]];
+[Reflect defineMethod: #eventSelectionRequest on: Twin as: [:self | 4103]];
+[Reflect defineMethod: #eventSelectionClear on: Twin as: [:self | 4104]];
+[Reflect defineMethod: #eventClientMessage on: Twin as: [:self | 8448]];
+[Reflect defineMethod: #eventControlReply on: Twin as: [:self | 8449]];
+
+[Reflect defineMethod: #changeResize on: Twin as: [:self | 0]];
+[Reflect defineMethod: #changeExpose on: Twin as: [:self | 1]];
 
 [Reflect docModule: #twin is:
   "Alien wrapper for vendored libtw. Twin opens a connection; ForeignAddress messages manage windows and copied events. Native structs and narrow integer widths stay behind the C bridge."]

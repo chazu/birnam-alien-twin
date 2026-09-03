@@ -9,4 +9,11 @@ let suite := [TestSuite named: "Alien Twin" module: #twin];
   [t expect: [connection isNull] equals: true describes: "missing display returns a null address"];
   [t expect: [[Twin lastError] = "success"] equals: false describes: "failure detail is retained"]]];
 
+[suite test: "names extended event and change constants" do: [:t |
+  [t expect: [Twin eventSelection] equals: 4101 describes: "selection event"];
+  [t expect: [Twin eventClientMessage] equals: 8448 describes: "client message event"];
+  [t expect: [Twin eventControlReply] equals: 8449 describes: "control reply event"];
+  [t expect: [Twin changeResize] equals: 0 describes: "resize change code"];
+  [t expect: [Twin changeExpose] equals: 1 describes: "expose change code"]]];
+
 suite

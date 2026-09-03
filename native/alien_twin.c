@@ -60,6 +60,27 @@ static int fits_dat(int value) {
     return value >= SHRT_MIN && value <= SHRT_MAX;
 }
 
+static int valid_window_id(unsigned long window) {
+    if (window > UINT_MAX || window == TW_NOID) {
+        set_error("invalid Twin window id");
+        return 0;
+    }
+    return 1;
+}
+
+static int valid_rgb24(unsigned long rgb) {
+    if (rgb > 0xFFFFFFul) {
+        set_error("Twin RGB color is outside the 24-bit range");
+        return 0;
+    }
+    return 1;
+}
+
+static trgb rgb24_to_trgb(unsigned long rgb) {
+    return TRGB((byte)((rgb >> 16) & 0xFFu), (byte)((rgb >> 8) & 0xFFu),
+                (byte)(rgb & 0xFFu));
+}
+
 static char *copy_text(const char *text, size_t length) {
     char *copy = (char *)malloc(length + 1);
     if (copy == NULL) {
@@ -205,7 +226,9 @@ int alien_twin_display_height(void *opaque) {
     return connection == NULL ? 0 : (int)Tw_GetDisplayHeight(connection->display);
 }
 
-unsigned long alien_twin_create_window(void *opaque, const char *title, int width, int height) {
+unsigned long alien_twin_create_window_configured(void *opaque, const char *title, int width,
+                                                  int height, unsigned long cursor_type,
+                                                  unsigned long attributes, unsigned long flags) {
     AlienTwinConnection *connection = valid_connection(opaque);
     size_t title_length;
     twindow window;
@@ -225,11 +248,8 @@ unsigned long alien_twin_create_window(void *opaque, const char *title, int widt
     }
 
     window = Tw_CreateWindow(connection->display, (dat)title_length, title, NULL, connection->menu,
-                             text_color, TW_LINECURSOR,
-                             TW_WINDOW_WANT_KEYS | TW_WINDOW_WANT_MOUSE |
-                                 TW_WINDOW_WANT_CHANGES | TW_WINDOW_DRAG | TW_WINDOW_RESIZE |
-                                 TW_WINDOW_CLOSE,
-                             TW_WINDOWFL_ROWS_DEFCOL, (dat)width, (dat)height, (dat)0);
+                             text_color, (uldat)cursor_type, (uldat)attributes, (uldat)flags,
+                             (dat)width, (dat)height, (dat)0);
     if (window == TW_NOID) {
         capture_twin_error(connection->display);
         return 0;
@@ -243,10 +263,17 @@ unsigned long alien_twin_create_window(void *opaque, const char *title, int widt
     return (unsigned long)window;
 }
 
+unsigned long alien_twin_create_window(void *opaque, const char *title, int width, int height) {
+    return alien_twin_create_window_configured(
+        opaque, title, width, height, TW_LINECURSOR,
+        TW_WINDOW_WANT_KEYS | TW_WINDOW_WANT_MOUSE | TW_WINDOW_WANT_CHANGES | TW_WINDOW_DRAG |
+            TW_WINDOW_RESIZE | TW_WINDOW_CLOSE,
+        TW_WINDOWFL_ROWS_DEFCOL);
+}
+
 int alien_twin_delete_window(void *opaque, unsigned long window) {
     AlienTwinConnection *connection = valid_connection(opaque);
-    if (connection == NULL || window > UINT_MAX || window == TW_NOID) {
-        set_error("invalid Twin window id");
+    if (connection == NULL || !valid_window_id(window)) {
         return 0;
     }
     Tw_RecursiveDeleteWindow(connection->display, (twindow)window);
@@ -257,7 +284,7 @@ int alien_twin_delete_window(void *opaque, unsigned long window) {
 int alien_twin_write_utf8(void *opaque, unsigned long window, const char *text) {
     AlienTwinConnection *connection = valid_connection(opaque);
     size_t length;
-    if (connection == NULL || window > UINT_MAX || window == TW_NOID || text == NULL) {
+    if (connection == NULL || !valid_window_id(window) || text == NULL) {
         set_error("invalid Twin window id or UTF-8 text");
         return 0;
     }
@@ -274,7 +301,7 @@ int alien_twin_write_utf8(void *opaque, unsigned long window, const char *text) 
 int alien_twin_set_title(void *opaque, unsigned long window, const char *title) {
     AlienTwinConnection *connection = valid_connection(opaque);
     size_t length;
-    if (connection == NULL || window > UINT_MAX || window == TW_NOID || title == NULL) {
+    if (connection == NULL || !valid_window_id(window) || title == NULL) {
         set_error("invalid Twin window id or title");
         return 0;
     }
@@ -290,8 +317,7 @@ int alien_twin_set_title(void *opaque, unsigned long window, const char *title) 
 
 int alien_twin_goto(void *opaque, unsigned long window, int x, int y) {
     AlienTwinConnection *connection = valid_connection(opaque);
-    if (connection == NULL || window > UINT_MAX || window == TW_NOID) {
-        set_error("invalid Twin window id");
+    if (connection == NULL || !valid_window_id(window)) {
         return 0;
     }
     Tw_GotoXYWindow(connection->display, (twindow)window, (ldat)x, (ldat)y);
@@ -301,12 +327,122 @@ int alien_twin_goto(void *opaque, unsigned long window, int x, int y) {
 
 int alien_twin_resize(void *opaque, unsigned long window, int width, int height) {
     AlienTwinConnection *connection = valid_connection(opaque);
-    if (connection == NULL || window > UINT_MAX || window == TW_NOID || !fits_dat(width) ||
-        !fits_dat(height) || width <= 0 || height <= 0) {
+    if (connection == NULL || !valid_window_id(window) || !fits_dat(width) || !fits_dat(height) ||
+        width <= 0 || height <= 0) {
         set_error("invalid Twin window id or dimensions");
         return 0;
     }
     Tw_ResizeWindow(connection->display, (twindow)window, (dat)width, (dat)height);
+    clear_error();
+    return 1;
+}
+
+int alien_twin_move(void *opaque, unsigned long window, int x, int y) {
+    AlienTwinConnection *connection = valid_connection(opaque);
+    if (connection == NULL || !valid_window_id(window) || !fits_dat(x) || !fits_dat(y)) {
+        set_error("invalid Twin window id or position");
+        return 0;
+    }
+    Tw_SetXYWindow(connection->display, (twindow)window, (dat)x, (dat)y);
+    clear_error();
+    return 1;
+}
+
+int alien_twin_scroll(void *opaque, unsigned long window, int dx, int dy) {
+    AlienTwinConnection *connection = valid_connection(opaque);
+    if (connection == NULL || !valid_window_id(window)) {
+        return 0;
+    }
+    Tw_ScrollWindow(connection->display, (twindow)window, (ldat)dx, (ldat)dy);
+    clear_error();
+    return 1;
+}
+
+int alien_twin_set_visible(void *opaque, unsigned long window, int visible) {
+    AlienTwinConnection *connection = valid_connection(opaque);
+    if (connection == NULL || !valid_window_id(window)) {
+        return 0;
+    }
+    Tw_SetVisibleWidget(connection->display, (twindow)window,
+                        visible ? (byte)ttrue : (byte)tfalse);
+    clear_error();
+    return 1;
+}
+
+int alien_twin_focus(void *opaque, unsigned long window) {
+    AlienTwinConnection *connection = valid_connection(opaque);
+    if (connection == NULL || !valid_window_id(window)) {
+        return 0;
+    }
+    Tw_FocusSubWidget(connection->display, (twindow)window);
+    clear_error();
+    return 1;
+}
+
+int alien_twin_raise(void *opaque, unsigned long window) {
+    AlienTwinConnection *connection = valid_connection(opaque);
+    if (connection == NULL || !valid_window_id(window)) {
+        return 0;
+    }
+    Tw_RaiseWindow(connection->display, (twindow)window);
+    clear_error();
+    return 1;
+}
+
+int alien_twin_lower(void *opaque, unsigned long window) {
+    AlienTwinConnection *connection = valid_connection(opaque);
+    if (connection == NULL || !valid_window_id(window)) {
+        return 0;
+    }
+    Tw_LowerWindow(connection->display, (twindow)window);
+    clear_error();
+    return 1;
+}
+
+int alien_twin_set_text_color(void *opaque, unsigned long window, unsigned long foreground,
+                              unsigned long background) {
+    AlienTwinConnection *connection = valid_connection(opaque);
+    if (connection == NULL || !valid_window_id(window) || !valid_rgb24(foreground) ||
+        !valid_rgb24(background)) {
+        return 0;
+    }
+    Tw_SetColTextWindow(connection->display, (twindow)window,
+                        TCOL(rgb24_to_trgb(foreground), rgb24_to_trgb(background)));
+    clear_error();
+    return 1;
+}
+
+int alien_twin_fill_rect(void *opaque, unsigned long window, int x, int y, int width, int height,
+                         unsigned long codepoint, unsigned long foreground,
+                         unsigned long background) {
+    AlienTwinConnection *connection = valid_connection(opaque);
+    tcell *row;
+    tcell cell;
+    int line;
+
+    if (connection == NULL || !valid_window_id(window) || !fits_dat(x) || !fits_dat(y) ||
+        !fits_dat(width) || !fits_dat(height) || width <= 0 || height <= 0 ||
+        (long)y + (long)height - 1 > SHRT_MAX || codepoint > 0x10FFFFul ||
+        !valid_rgb24(foreground) || !valid_rgb24(background)) {
+        set_error("invalid Twin fill rectangle, codepoint, or color");
+        return 0;
+    }
+
+    row = (tcell *)malloc((size_t)width * sizeof(*row));
+    if (row == NULL) {
+        set_error("could not allocate a Twin fill row");
+        return 0;
+    }
+    cell = TCELL(TCOL(rgb24_to_trgb(foreground), rgb24_to_trgb(background)),
+                 (trune)codepoint);
+    for (int column = 0; column < width; ++column) {
+        row[column] = cell;
+    }
+    for (line = 0; line < height; ++line) {
+        Tw_DrawTCellWindow(connection->display, (twindow)window, (dat)width, (dat)1, (dat)x,
+                           (dat)(y + line), (dat)width, row);
+    }
+    free(row);
     clear_error();
     return 1;
 }
