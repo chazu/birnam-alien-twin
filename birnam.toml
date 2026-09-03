@@ -1,0 +1,12 @@
+name = "alien-twin"
+version = "0.1.0"
+main = "main.birnam"
+source_roots = ["src"]
+load = ["twin"]
+
+[[wrapped]]
+name = "twin"
+build = [["sh", "native/build.sh", "{output}", "{project}", "{build}"]]
+
+[test]
+sources = ["test/twin-test.birnam"]

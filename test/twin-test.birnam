@@ -1,0 +1,12 @@
+let suite := [TestSuite named: "Alien Twin" module: #twin];
+
+[suite test: "reports the vendored Twin protocol" do: [:t |
+  [t expect: [Twin protocolVersionString] equals: "4.8.0" describes: "protocol string"];
+  [t expect: [Twin protocolVersion] equals: 264192 describes: "packed protocol number"]]];
+
+[suite test: "reports a missing server without dereferencing a null handle" do: [:t |
+  let connection := [Twin open: ":65534"];
+  [t expect: [connection isNull] equals: true describes: "missing display returns a null address"];
+  [t expect: [[Twin lastError] = "success"] equals: false describes: "failure detail is retained"]]];
+
+suite

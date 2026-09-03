@@ -1,0 +1,7 @@
+.birnam/
+*.dylib
+
+# This repository intentionally carries its upstream dependency. Override the
+# user's global vendor/ ignore so Twin's source is included in commits.
+!vendor/
+!vendor/**

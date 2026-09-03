@@ -1,0 +1,60 @@
+
+				README.porting
+
+			useful tips and useless warnings
+			  for people trying to compile
+			    twin on non-Linux systems
+
+Various users asked for twin portings on many platforms,
+yet the author only has access to Linux and SunOS systems
+so this file is/will be mostly user contributed.
+
+Compiling on FreeBSD:
+
+	Andreas Schweitzer contributed the patch to have twin correctly
+	compile on FreeBSD. In case you meet problems, you can e-mail
+	the author but remember that he is not a FreeBSD expert at all.
+	
+	Tips and caveats:
+	
+	Only X and twin driver are tested, tty (termcap/ncurses) driver
+	has known problems on FreeBSD console: in particular, the PAUSE key
+	does not work; use F4 instead.
+	Quite obviously, Linux console driver does not compile:
+	it's Linux specific and will get disabled.
+
+	Running `ldconfig' with no parameters may be not a good idea on FreeBSD:
+	try with `ldconfig -R'.
+
+	A last note: FreeBSD native console driver is not yet available.
+	Any volunteer going to code it?
+	
+	
+Compiling on AIX:
+
+	Once it "mostly" worked, but it's untested and unmaintained.
+
+Compiling on SunOS:
+
+	If you have problems compilingclients/findtwin.c, add a line
+	
+	int alphasort();
+	
+	to clients/findtwin.c, and/or change the line saying
+	
+	LDFLAGS_twfindtwin+=$(LD_LIBTW)
+
+	in clients/Makefile into
+	
+	LDFLAGS_twfindtwin+=$(LD_LIBTW) -L/usr/ucblib -lucb
+	
+Compiling on ELKS:
+
+	Stopped at a dead end:
+	when it was attempted, the 'bcc' compiler available with ELKS
+	does not support ANSI C features as automatic aggregate
+	initialization, i.e. the following:
+	void test(void) {
+	  int a[] = { 1, 2, 3 };
+	}
+	so compile fails.

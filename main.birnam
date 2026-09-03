@@ -1,0 +1,38 @@
+[Alien wrap: "usleep" signature: "i i" as: #twinDemoSleepMicros on: Integer];
+
+let display := [ProjectArgs at: 0 ifAbsent: [| nil]];
+let stayUp := [[ProjectArgs at: 1 ifAbsent: [| ""]] = "--stay"];
+
+[[display isNil]
+  ifTrue: [|
+    [System println: ["Twin protocol " , [Twin protocolVersionString]]];
+    [System println: "Pass a Twin display to run the live window demo, for example: birnam run -- :0"]]
+  ifFalse: [|
+    let connection := [Twin open: display];
+    [[connection isNull]
+      ifTrue: [| [System println: [Twin lastError]]]
+      ifFalse: [|
+        let window := [connection twinCreateWindow: "Birnam live demo" width: 36 height: 8];
+        [[window = 0]
+          ifTrue: [| [System println: [Twin lastError]]]
+          ifFalse: [|
+            [connection twinWriteUtf8: window text: "hello from Birnam over Twin\n"];
+            [connection twinGoto: window x: 2 y: 2];
+            [connection twinWriteUtf8: window text: ["connected to " , display]];
+            [connection twinSetTitle: window title: "Birnam was here"];
+            [connection twinResize: window width: 42 height: 10];
+            [connection twinSync];
+            [System println: [connection twinDisplayWidth]];
+            [System println: [connection twinDisplayHeight]];
+            [stayUp
+              ifTrue: [|
+                [System println: "Birnam window is up for 30 minutes"];
+                [1800000000 twinDemoSleepMicros]]
+              ifFalse: [|
+                [3000000 twinDemoSleepMicros];
+                let event := [connection twinNextEventWait: 0];
+                [[event isNull] ifFalse: [|
+                  [System println: ["Twin event type " , [[event twinEventType] printString]]];
+                  [event twinEventFree]]]]];
+            [connection twinDeleteWindow: window]]];
+        [connection twinClose]]]]]

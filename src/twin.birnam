@@ -1,0 +1,70 @@
+[Module named: #twin requires: #[]];
+[Alien dlopen: "libtwin.dylib"];
+
+[Globals at: #Twin put: [Object clone]];
+
+// Library metadata and connection factories.
+[Alien wrap: "alien_twin_protocol_version_string" signature: "s" as: #protocolVersionString on: Twin];
+[Alien wrap: "alien_twin_protocol_version" signature: "u" as: #protocolVersion on: Twin];
+[Alien wrap: "alien_twin_last_error" signature: "s" as: #lastError on: Twin];
+[Alien wrap: "alien_twin_open_default" signature: "p" as: #open on: Twin];
+[Alien wrap: "alien_twin_open_display" signature: "p s" as: #twinOpenDisplay on: String];
+
+[Reflect defineMethod: #open: on: Twin as: [:self :display |
+  [display twinOpenDisplay]] doc:
+  "Open a Twin connection using DISPLAY, for example ':0' or 'host:0'. Answers a ForeignAddress; test isNull after failure and inspect [Twin lastError]."];
+
+// Connection lifecycle and server metadata. The connection ForeignAddress is
+// the first native argument; the remaining C arguments are selector arguments.
+[Alien wrap: "alien_twin_close" signature: "i p" as: #twinClose on: ForeignAddress];
+[Alien wrap: "alien_twin_connection_fd" signature: "i p" as: #twinConnectionFd on: ForeignAddress];
+[Alien wrap: "alien_twin_library_version" signature: "u p" as: #twinLibraryVersion on: ForeignAddress];
+[Alien wrap: "alien_twin_server_version" signature: "u p" as: #twinServerVersion on: ForeignAddress];
+[Alien wrap: "alien_twin_flush" signature: "i p" as: #twinFlush on: ForeignAddress];
+[Alien wrap: "alien_twin_sync" signature: "i p" as: #twinSync on: ForeignAddress];
+[Alien wrap: "alien_twin_in_panic" signature: "i p" as: #twinInPanic on: ForeignAddress];
+[Alien wrap: "alien_twin_display_width" signature: "i p" as: #twinDisplayWidth on: ForeignAddress];
+[Alien wrap: "alien_twin_display_height" signature: "i p" as: #twinDisplayHeight on: ForeignAddress];
+
+// A compact window surface with the Twin-specific structs and narrow integer
+// widths normalized by native/alien_twin.c.
+[Alien wrap: "alien_twin_create_window" signature: "u p s i i"
+  as: #twinCreateWindow:width:height: on: ForeignAddress];
+[Alien wrap: "alien_twin_delete_window" signature: "i p u"
+  as: #twinDeleteWindow: on: ForeignAddress];
+[Alien wrap: "alien_twin_write_utf8" signature: "i p u s"
+  as: #twinWriteUtf8:text: on: ForeignAddress];
+[Alien wrap: "alien_twin_set_title" signature: "i p u s"
+  as: #twinSetTitle:title: on: ForeignAddress];
+[Alien wrap: "alien_twin_goto" signature: "i p u i i"
+  as: #twinGoto:x:y: on: ForeignAddress];
+[Alien wrap: "alien_twin_resize" signature: "i p u i i"
+  as: #twinResize:width:height: on: ForeignAddress];
+
+// Event reads return an owned bridge event. A null address means no event was
+// available in non-blocking mode. Call twinEventFree exactly once on each
+// non-null event after reading its fields.
+[Alien wrap: "alien_twin_next_event" signature: "p p i"
+  as: #twinNextEventWait: on: ForeignAddress];
+[Alien wrap: "alien_twin_event_type" signature: "u p" as: #twinEventType on: ForeignAddress];
+[Alien wrap: "alien_twin_event_widget" signature: "u p" as: #twinEventWidget on: ForeignAddress];
+[Alien wrap: "alien_twin_event_code" signature: "u p" as: #twinEventCode on: ForeignAddress];
+[Alien wrap: "alien_twin_event_shift_flags" signature: "u p" as: #twinEventShiftFlags on: ForeignAddress];
+[Alien wrap: "alien_twin_event_x" signature: "i p" as: #twinEventX on: ForeignAddress];
+[Alien wrap: "alien_twin_event_y" signature: "i p" as: #twinEventY on: ForeignAddress];
+[Alien wrap: "alien_twin_event_width" signature: "i p" as: #twinEventWidth on: ForeignAddress];
+[Alien wrap: "alien_twin_event_height" signature: "i p" as: #twinEventHeight on: ForeignAddress];
+[Alien wrap: "alien_twin_event_text" signature: "s p" as: #twinEventText on: ForeignAddress];
+[Alien wrap: "alien_twin_event_free" signature: "i p" as: #twinEventFree on: ForeignAddress];
+
+// Public event-type constants from Tw/Tw.h.
+[Reflect defineMethod: #eventDisplay on: Twin as: [:self | 4095]];
+[Reflect defineMethod: #eventKey on: Twin as: [:self | 4096]];
+[Reflect defineMethod: #eventMouse on: Twin as: [:self | 4097]];
+[Reflect defineMethod: #eventChange on: Twin as: [:self | 4098]];
+[Reflect defineMethod: #eventGadget on: Twin as: [:self | 4099]];
+[Reflect defineMethod: #eventMenuRow on: Twin as: [:self | 4100]];
+[Reflect defineMethod: #eventControl on: Twin as: [:self | 8192]];
+
+[Reflect docModule: #twin is:
+  "Alien wrapper for vendored libtw. Twin opens a connection; ForeignAddress messages manage windows and copied events. Native structs and narrow integer widths stay behind the C bridge."]
